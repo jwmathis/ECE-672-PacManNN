@@ -17,13 +17,13 @@ from gymnasium.spaces import Box, Discrete  # Change this import
 from gymnasium.utils import env_checker  # Import the environment checker
 
 # Designing convolutional neural network
-class GameNet(nn.module): # defines a new neural netwokr model that inherits from Pytorch's base class nn.module
+class GameNet(nn.Module): # defines a new neural netwokr model that inherits from Pytorch's base class nn.module
     def __init__(self, input_channels, num_actions): 
-        super(DQN, self).__init__() # calls the initializer of the parent class nn.module 
+        super(GameNet, self).__init__() # calls the initializer of the parent class nn.module 
         self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=8, stride=4) # convolutional layer with 32 filters, each of size 8 x8, applied with a stride of 4
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2) # convolutional layer with 64 filters, each of size 4 x 4, applied with a stride of 2
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1) # convolutional layer with 64 filters, each of size 3 x 3
-        self.fc1 = nn.Linear(64 * 7 * 7 * 512) # fully connected layer with 512 units
+        self.fc1 = nn.Linear(64 * 7 * 7, 512) # fully connected layer with 512 units
         self.fc2 = nn.Linear(512, num_actions) # final fully connected layer with output units equal to the number of possible actions
         
     def forward(self, x):
@@ -35,11 +35,25 @@ class GameNet(nn.module): # defines a new neural netwokr model that inherits fro
         x = self.fc2(x)
         return x
     
+# Define a replay buffer
+class ReplayBuffer:
+    def __init__(self, capacity):
+        self.buffer = deque(maxlen=capacity)
+    
+    def push(self, experience):
+        self.buffer.append(experience)
+    
+    def sample(self, batch_size):
+        return random.sample(self.buffer, batch_size)
+    
+    def __len__(self):
+        return len(self.buffer)
+           
 class PacMan(Env):
     def __init__(self):
         super().__init__()
         self.observation_space = Box(low=0, high=255, shape=(1,50,80), dtype=np.uint8)
-        self.action_space = Discrete(3)
+        self.action_space = Discrete(5)
         
         self.previous_lives = 2
         self.current_lives = self.previous_lives
@@ -84,7 +98,7 @@ class PacMan(Env):
         life_penalty = 0
         # Penalize only when a life is lost (and only once per life loss)
         if current_lives < self.previous_lives:
-            life_penalty -= 500
+            life_penalty -= 100
             self.previous_lives = current_lives # update previous lives 
             
         reward = pellet_reward + life_penalty
@@ -188,29 +202,82 @@ class PacMan(Env):
         # Get the number of lives left 
         num_lives = self.get_lives()
         return num_lives == 0
-    
-   
+
+# Hyperparameters
+num_episodes = 1000
+batch_size = 32
+gamma = 0.99
+epsilon = 0.1 # Exploration rate
+buffer_capacity = 10000
+learning_rate = 1e-3    
+
+# Initialize environment and model
 env = PacMan()
 input_channels = env.observation_space.shape[0]
 num_actions = env.action_space.n
 
 model = GameNet(input_channels, num_actions)
-optimizer = Adam(model.parameters(), lr=1e-3)
+target_model = GameNet(input_channels, num_actions)
+target_model.load_state_dict(model.state_dict())
+optimizer = Adam(model.parameters(), lr=learning_rate)
 criterion = nn.MSELoss()
+replay_buffer = ReplayBuffer(buffer_capacity) # Stores experiences (state, action, reward, next state, done) for training
 
-def train_gamenet(env, model, optimizer, criterion, num_episodes=10):
+# Training function to choose an action using epsilon-greedy policy (Exploration vs exploitation)
+def select_action(state, epsilon):
+    if random.random() < epsilon:
+        return env.action_space.sample() # Random action (Exploration)
+    else:
+        state = torch.FloatTensor(state).unsqueeze(0) # Add batch dimension
+        with torch.no_grad():
+            q_values = model(state)
+        return q_values.argmax().item() # Action with highest Q-value
+
+# Training function to procvide interaction with the environment, 
+def train_gamenet(env, model, target_model, optimizer, criterion, replay_buffer, num_episodes=10):
     for episode in range(num_episodes):
         state, _ = env.reset()
         done = False
         total_reward = 0
         
         while not done:
-            action, _ = env.action_space.sample()
+            action = select_action(state, epsilon)
             next_state, reward, done, truncated, info = env.step(action)
-            
             total_reward += reward
+            
+            # Store experience in replay buffer
+            replay_buffer.push((state, action, reward, next_state, done))
             state = next_state
             
-        print(f"Episode {episode}: Total Reward: {total_reward}")
+            # Perform optimization step
+            if len(replay_buffer) >= batch_size:
+                batch = replay_buffer.sample(batch_size)
+                states, actions, rewards, next_states, dones = zip(*batch)
+                
+                states = torch.FloatTensor(states)
+                actions = torch.LongTensor(actions)
+                rewards = torch.FloatTensor(rewards)
+                next_states = torch.FloatTensor(next_states)
+                dones = torch.FloatTensor(dones)
+                
+                # Compute Q-values
+                q_values = model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+                next_q_values = target_model(next_states).max(1)[0]
+                target_q_values = rewards + (gamma * next_q_values * (1 - dones))
+                
+                # Compute loss
+                loss = criterion(q_values, target_q_values)
+                
+                # Optimize the model
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                
+        # Print progress
+        print(f"Episode {episode}: Total Reward = {total_reward}, Loss: {loss}")
         
-train_gamenet(env, model, optimizer, criterion)
+        # Update target network
+        if episode % 100 == 0:
+            target_model.load_state_dict(model.state_dict())
+        
+train_gamenet(env, model, target_model, optimizer, criterion, replay_buffer, num_episodes)
