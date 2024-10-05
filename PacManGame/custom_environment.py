@@ -1,7 +1,7 @@
 # Import Dependencies
 import torch # PyToch library for building and training neural networks
 from torch import nn
-from torch.optim import Adam
+from torch.optim import AdamW
 import numpy as np # for numerical calculations
 from collections import namedtuple, deque # provides useful data structures may not need
 import random # for random sampling 
@@ -16,6 +16,8 @@ from gymnasium import Env
 from gymnasium.spaces import Box, Discrete
 from gymnasium.utils import env_checker  # Import the environment checker
 from collections import deque
+
+
 
 class PacMan(Env):
     def __init__(self):
@@ -41,15 +43,15 @@ class PacMan(Env):
         #self.done_location = {'top':508, 'left':-1810, 'width':450, 'height':80}     
 
         # Define templates for tracking
-        self.ghost_template = cv.imread('ghost_template.png', 0)
-        self.ghost_template2 = cv.imread('ghost_template3.png', 0)
-        self.ghost_template3 = cv.imread('ghost_template4.png', 0)
-        self.pacman_life_template = cv.imread('pacman_life_icon.png', 0)
-        self.pacman_template_left = cv.imread('pacman_template_left.png', 0)
-        self.pacman_template_right = cv.imread('pacman_template_right.png', 0)
-        self.pacman_template_up = cv.imread('pacman_template_up.png', 0)
-        self.pacman_template_down = cv.imread('pacman_template_down.png', 0)
-        self.pacman_template_closed = cv.imread('pacman_template_closed.png', 0)
+        self.ghost_template = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\ghost_template.png', 0)
+        self.ghost_template2 = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\ghost_template3.png', 0)
+        self.ghost_template3 = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\ghost_template4.png', 0)
+        self.pacman_life_template = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_life_icon.png', 0)
+        self.pacman_template_left = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_left.png', 0)
+        self.pacman_template_right = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_right.png', 0)
+        self.pacman_template_up = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_up.png', 0)
+        self.pacman_template_down = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_down.png', 0)
+        self.pacman_template_closed = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_closed.png', 0)
         
     # observation of the state of the environment
     def get_observation(self):
@@ -184,6 +186,9 @@ class PacMan(Env):
         # cv.destroyAllWindows()
         return screen_capture
     
+    def calculate_distance (self, pos1, pos2):
+        return np.sqrt((pos1[0] - pos2[0])**2 + ( pos1[1] - pos2[1])**2)
+    
     # Reward for eating pellets
     def get_pellet_reward(self, current_pellet_count):
         if current_pellet_count < self.previous_pellet_count:
@@ -209,15 +214,31 @@ class PacMan(Env):
             
         current_pellet_count = self.read_pellet_count_from_file()
         pellet_reward = self.get_pellet_reward(current_pellet_count)
-        # pacman_position = self.get_pacman_position()
-        # ghost_positions = self.get_ghost_positions()
-        # ghost_penalty = self.get_ghost_penalty(pacman_position, ghost_positions)
         
+        # ghost_positions, pacman_positions, _ = self.get_character_positions()
+        
+        # if pacman_positions:
+        #     pacman_pos = pacman_positions[0]
+        # else:
+        #     pacman_pos = (0, 0) # Default position if not detected
+            
+        # if ghost_positions:
+        #     ghost_positions = ghost_positions[0]
+        # else:
+        #     ghost_positions = (0, 0)
+            
+        # ghost_penalty = 0
+        # threshold_distance = 50
+        # for ghost_pos in ghost_positions:
+        #     distance = self.calculate_distance(pacman_pos, ghost_pos)
+        #     if distance < threshold_distance:
+        #         ghost_penalty -= 10
+                
         current_lives = self.get_lives()
         life_penalty = 0
         # Penalize only when a life is lost (and only once per life loss)
         if current_lives < self.previous_lives:
-            life_penalty -= 100
+            life_penalty -= 50
             self.previous_lives = current_lives # update previous lives 
             
         reward = pellet_reward + life_penalty
@@ -237,17 +258,4 @@ class PacMan(Env):
         
         return stacked_observation, reward, done, False, {}
     
-    
-env = PacMan()    
-# Play 10 games
-for episode in range(10):
-    obs = env.reset()
-    done =False
-    total_reward = 0
-    
-    while not done:
-        obs, reward, done, truncated, info = env.step(env.action_space.sample())
-        total_reward += reward
-        env.render()
-    print(f'Total Reward for episode {episode} is {total_reward}')
     
