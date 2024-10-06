@@ -68,7 +68,7 @@ class DQN(nn.Module): # defines a new neural netwokr model that inherits from Py
 		
 	def _calculate_fc_input_size(self, input_dims):
 		with torch.no_grad():
-			dummy_input = torch.zeros(1, *input_dims, 50, 80)
+			dummy_input = torch.zeros(1, input_dims[0], 50, 80)
 			x = torch.relu(self.conv1(dummy_input))
 			x = torch.relu(self.conv2(x))
 			x = torch.relu(self.conv3(x))
@@ -104,6 +104,7 @@ class DQNAgent:
 		self.Q_eval = DQN(self.lr, input_dims, fc1_dims=512, fc2_dims=512, num_actions=num_actions)
 		# self.memory = deque(maxlen=2000) rather than use this use this:
 		self.state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
+		print("Shape of state memory: ", self.state_memory.shape)
 		self.new_state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
 		self.action_memory = np.zeros(self.mem_size, dtype=np.int32)
 		self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
@@ -143,7 +144,7 @@ class DQNAgent:
 		
 		state_batch = torch.tensor(self.state_memory[batch]).to(self.Q_eval.device)
 		new_state_batch = torch.tensor(self.new_state_memory[batch]).to(self.Q_eval.device)
-		reward_batch = torch.tensor(self.reard_memory[batch]).to(self.Q_eval.device)
+		reward_batch = torch.tensor(self.reward_memory[batch]).to(self.Q_eval.device)
 		terminal_batch = torch.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
 		
 		action_batch = self.action_memory[batch]

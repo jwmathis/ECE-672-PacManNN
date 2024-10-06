@@ -7,7 +7,7 @@ if __name__ == '__main__':
     env = PacMan()
     
     agent = DQNAgent(gamma=0.99, epsilon=1.0, batch_size=64, num_actions=5, 
-                     eps_end=0.01, input_dims=[6, 50, 80], lr=0.003)
+                     eps_end=0.01, input_dims=(6, 50, 80), lr=0.003)
     scores, eps_history = [], []
     n_games = 500
     
@@ -18,6 +18,7 @@ if __name__ == '__main__':
         while not done:
             action = agent.choose_action(observation)
             observation_, reward, done, truncated, info = env.step(action)
+            print("Shape: ", observation_.shape)
             score += reward
             agent.store_transition(observation, action, reward, observation_, done)
             agent.learn()
