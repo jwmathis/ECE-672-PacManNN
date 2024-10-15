@@ -49,7 +49,7 @@ def plot_learning_curve(x, scores, epsilons, filename, lines=None):
 
 
 # Designing DQN Model
-class DQN(nn.Module): # defines a new neural netwokr model that inherits from Pytorch's base class nn.module
+class DQN(nn.Module): # defines a new neural network model that inherits from Pytorch's base class nn.module
 	def __init__(self, lr, input_dims, fc1_dims, fc2_dims, num_actions): 
 		super(DQN, self).__init__() # calls the initializer of the parent class nn.module 
 		self.input_dims = input_dims
@@ -104,7 +104,6 @@ class DQNAgent:
 		self.Q_eval = DQN(self.lr, input_dims, fc1_dims=512, fc2_dims=512, num_actions=num_actions)
 		# self.memory = deque(maxlen=2000) rather than use this use this:
 		self.state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
-		print("Shape of state memory: ", self.state_memory.shape)
 		self.new_state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
 		self.action_memory = np.zeros(self.mem_size, dtype=np.int32)
 		self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
@@ -124,7 +123,8 @@ class DQNAgent:
 	# Method for choosing an action
 	def choose_action(self, observation):
 		if np.random.random() > self.epsilon:
-			state = torch.tensor([observation]).to(self.Q_eval.device)
+			observation = observation / 255.0
+			state = torch.tensor([observation], dtype=torch.float32).to(self.Q_eval.device)
 			actions = self.Q_eval.forward(state)
 			action = torch.argmax(actions).item()
 		else:

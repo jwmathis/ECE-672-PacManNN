@@ -24,7 +24,7 @@ class PacMan(Env):
         super().__init__()
         # Define spaces
         self.observation_space = Box(low=0, high=255, shape=(6,50,80), dtype=np.uint8)
-        self.action_space = Discrete(5) # number of possible actions
+        self.action_space = Discrete(4) # number of possible actions
         
         self.previous_lives = 2
         self.current_lives = self.previous_lives
@@ -43,15 +43,15 @@ class PacMan(Env):
         #self.done_location = {'top':508, 'left':-1810, 'width':450, 'height':80}     
 
         # Define templates for tracking
-        self.ghost_template = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\ghost_template.png', 0)
-        self.ghost_template2 = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\ghost_template3.png', 0)
-        self.ghost_template3 = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\ghost_template4.png', 0)
-        self.pacman_life_template = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_life_icon.png', 0)
-        self.pacman_template_left = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_left.png', 0)
-        self.pacman_template_right = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_right.png', 0)
-        self.pacman_template_up = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_up.png', 0)
-        self.pacman_template_down = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_down.png', 0)
-        self.pacman_template_closed = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\pacman_template_closed.png', 0)
+        self.ghost_template = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\ghost_template.png', 0)
+        self.ghost_template2 = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\ghost_template3.png', 0)
+        self.ghost_template3 = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\ghost_template4.png', 0)
+        self.pacman_life_template = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\pacman_life_icon.png', 0)
+        self.pacman_template_left = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\pacman_template_left.png', 0)
+        self.pacman_template_right = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\pacman_template_right.png', 0)
+        self.pacman_template_up = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\pacman_template_up.png', 0)
+        self.pacman_template_down = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\pacman_template_down.png', 0)
+        self.pacman_template_closed = cv.imread('C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\Images\\pacman_template_closed.png', 0)
         
     # observation of the state of the environment
     def get_observation(self):
@@ -117,8 +117,8 @@ class PacMan(Env):
         self.previous_pellet_count = self.read_pellet_count_from_file()
         
         # reset frame stack
-        self.frame_stack.clear()
-        for _ in range(6):
+        self.frame_stack.clear() # Delete all items from Deque
+        for _ in range(6): 
             initial_frame = self.get_observation()
             self.frame_stack.append(initial_frame)
             
@@ -206,11 +206,12 @@ class PacMan(Env):
             1: 'right',  # Move Right
             2: 'up',     # Move Up
             3: 'down',   # Move Down
-            4: 'no_op'   # No operation (do nothing)
+            #4: 'no_op'   # No operation (do nothing)
         }
         
-        if action != 4:
-            pydirectinput.press(action_map[action])
+        pydirectinput.press(action_map[action])
+        # if action != 4:
+        #     pydirectinput.press(action_map[action])
             
         current_pellet_count = self.read_pellet_count_from_file()
         pellet_reward = self.get_pellet_reward(current_pellet_count)
