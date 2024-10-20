@@ -17,7 +17,7 @@ class Agent:
         self.gamma = hyperparameters['gamma']
         self.epsilon_init = hyperparameters['epsilon_init']
         self.lr = hyperparameters['lr']
-        self.batch_size = hyperparameters['batch_size']
+        self.mini_batch_size = hyperparameters['batch_size']
     def run(self, is_training=True, render=False):
         env = PacMan()
 
@@ -48,10 +48,10 @@ class Agent:
                     action = torch.tensor(action, dtype=torch.long, device=device)
                 else:
                     with torch.no_grad():
-                        action = policy_dqn(state.unsqueeze(dim=0)).argmax()
+                        action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
                 
                 # Processing
-                new_state, reward, terminated, _, info = env.step(action)
+                new_state, reward, terminated, _, info = env.step(action.item())
                 
                 # Accumulate reward
                 episode_reward += reward
@@ -70,3 +70,7 @@ class Agent:
             
             epsilon = max(epsilon * self.epsilon_decay, self.epsilon_min)
             epsilon_history.append(epsilon)
+
+if __name__ == '__main__':
+    agent = Agent('pacmanv0')
+    agent.run(is_training=True, render=False)
