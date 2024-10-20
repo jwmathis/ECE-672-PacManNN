@@ -1,0 +1,13 @@
+pacman0:
+  env_id: PacMan-v0
+  replay_memory_size: 100000
+  gamma: 0.99
+  epsilon_init: 1.0
+  batch_size: 64
+  num_actions: 4
+  eps_end: 0.01
+  eps_dec: 0.998
+  input_dims: [6, 50, 80]
+  lr: 0.001
+  n_games: 220
+  save_folder: saved_models
