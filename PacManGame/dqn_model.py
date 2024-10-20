@@ -17,7 +17,6 @@ from gymnasium.spaces import Box, Discrete
 from gymnasium.utils import env_checker  # Import the environment checker
 from collections import deque
 
-
 def plot_learning_curve(x, scores, epsilons, filename, lines=None):
 	fig=plt.figure()
 	ax=fig.add_subplot(111, label="1")
@@ -85,81 +84,111 @@ class DQN(nn.Module): # defines a new neural network model that inherits from Py
 		
 		return actions
 	
-	
+# Creating Replay Buffer
+class ReplayBuffer:
+    def __init__(self, max_mem_size, input_dims):
+        self.mem_size = max_mem_size 
+        self.mem_cntr = 0
+        self.state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
+        self.new_state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
+        self.action_memory = np.zeros(self.mem_size, dtype=np.int32)
+        self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
+        self.terminal_memory = np.zeros(self.mem_size, dtype=np.bool_)
+    def store_transition(self, state, action, reward, state_, done):
+        index = self.mem_cntr % self.mem_size
+        self.state_memory[index] = state
+        self.new_state_memory[index] = state_
+        self.reward_memory[index] = reward
+        self.action_memory[index] = action
+        self.terminal_memory[index] = done
+        self.mem_cntr += 1
+    def sample_buffer(self, batch_size):
+        max_mem = min(self.mem_cntr, self.mem_size)
+        batch =random.sample(range(max_mem), batch_size)
+        states = self.state_memory[batch]
+        actions = self.action_memory[batch]
+        rewards = self.reward_memory[batch]
+        new_states = self.new_state_memory[batch]
+        dones = self.terminal_memory[batch]
+        return states, actions, rewards, new_states, dones
+  
 # Creating DQN Agent
 class DQNAgent:       
 	def __init__(self, gamma, epsilon, lr, input_dims, batch_size, num_actions,
-				 max_mem_size=100000, eps_end=0.01, eps_dec=5e-4):
+				 max_mem_size=10000, eps_end=0.01, eps_dec=0.99, replace_target=1000):
 		self.gamma = gamma # Determines the weighting of future rewards
 		self.epsilon = epsilon
-		self.epsilon_min = eps_end
+		self.epsilon_end = eps_end
 		self.epsilon_decay = eps_dec
 		self.lr = lr
 		self.action_space = [i for i in range(num_actions)]
 		self.num_actions = num_actions
-		self.mem_size = max_mem_size
 		self.batch_size = batch_size
-		self.mem_cntr = 0
+		self.replace_target = replace_target # Number of steps before updating target network
+		self.learn_step_counter = 0 # Track the steps for target network update
 		
-		self.Q_eval = DQN(self.lr, input_dims, fc1_dims=512, fc2_dims=512, num_actions=num_actions)
-		# self.memory = deque(maxlen=2000) rather than use this use this:
-		self.state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
-		self.new_state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
-		self.action_memory = np.zeros(self.mem_size, dtype=np.int32)
-		self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
-		self.terminal_memory = np.zeros(self.mem_size, dtype=np.bool_)
-	
-	# Method for storing memory   
+		# Initialize evaluation (q_eval) and target (q_target) network
+		self.q_eval = DQN(self.lr, input_dims, fc1_dims=512, fc2_dims=512, num_actions=num_actions)
+		self.q_target = DQN(self.lr, input_dims, fc1_dims=512, fc2_dims=512, num_actions=num_actions)
+  
+		# Initially, the target network has the same weights as the evaluation network
+		self.q_target.load_state_dict(self.q_eval.state_dict())
+		self.q_target.eval()
+  
+		# Initialize the replay buffer
+		self.memory = ReplayBuffer(max_mem_size, input_dims)
+		self.optimizer = Adam(self.q_eval.parameters(), lr=self.lr)
+		self.loss = nn.MSELoss()
+		self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 	def store_transition(self, state, action, reward, state_, done):
-		index = self.mem_cntr % self.mem_size
-		self.state_memory[index] = state
-		self.new_state_memory[index] = state_
-		self.reward_memory[index] = reward
-		self.action_memory[index] = action
-		self.terminal_memory[index] = done
-		
-		self.mem_cntr += 1
-	
+		self.memory.store_transition(state, action, reward, state_, done)
+  
 	# Method for choosing an action
 	def choose_action(self, observation):
 		if np.random.random() > self.epsilon:
 			observation = observation / 255.0
-			state = torch.tensor([observation], dtype=torch.float32).to(self.Q_eval.device)
-			actions = self.Q_eval.forward(state)
+			state = torch.tensor([observation], dtype=torch.float32).to(self.q_eval.device)
+			actions = self.q_eval.forward(state)
 			action = torch.argmax(actions).item()
 		else:
 			action = np.random.choice(self.action_space)
-			
 		return action
+
+	def replace_target_network(self):
+		if self.learn_step_counter % self.replace_target == 0:
+			self.q_target.load_state_dict(self.q_eval.state_dict())
+			print('Target network updated.')
 	
 	def learn(self):
-		if self.mem_cntr < self.batch_size:
+		if self.memory.mem_cntr < self.batch_size:
 			return
-		self.Q_eval.optimizer.zero_grad()
+		self.optimizer.zero_grad()
 		
-		max_mem = min(self.mem_cntr, self.mem_size)
-		batch = np.random.choice(max_mem, self.batch_size, replace=False)
+		self.replace_target_network()
+  
+		states, actions, rewards, states_, dones = self.memory.sample_buffer(self.batch_size)
 		
-		batch_index = np.arange(self.batch_size, dtype=np.int32)
+		states = torch.tensor(states).to(self.q_eval.device)
+		rewards = torch.tensor(rewards).to(self.q_eval.device)
+		dones = torch.tensor(dones, dtype=torch.float32).to(self.q_eval.device)
+		actions = torch.tensor(actions).to(self.q_eval.device)
+		states_ = torch.tensor(states_).to(self.q_eval.device)
 		
-		state_batch = torch.tensor(self.state_memory[batch]).to(self.Q_eval.device)
-		new_state_batch = torch.tensor(self.new_state_memory[batch]).to(self.Q_eval.device)
-		reward_batch = torch.tensor(self.reward_memory[batch]).to(self.Q_eval.device)
-		terminal_batch = torch.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
+		# Q-values for the next state from the target network (for stability)
+		q_next = self.q_target.forward(states_).max(dim=1)[0]
+
+		# Q-values for current state from evaluation network
+		q_pred = self.q_eval.forward(states)[range(self.batch_size), actions]
 		
-		action_batch = self.action_memory[batch]
+		# Calculate target Q-values using Bellman equation
+		q_target = rewards + self.gamma *  q_next * (1 - dones)
 		
-		q_eval = self.Q_eval.forward(state_batch)[batch_index, action_batch]
-		q_next = self.Q_eval.forward(new_state_batch)
-		q_next[terminal_batch == 1] = 0.0
-		
-		q_target = reward_batch + self.gamma * torch.max(q_next, dim=1)[0]
-		
-		loss = self.Q_eval.loss(q_target, q_eval).to(self.Q_eval.device)
+		# Compute loss between predicted Q-values and target Q-values
+		loss = self.loss(q_pred, q_target)
 		loss.backward()
-		self.Q_eval.optimizer.step()
-		
-		if self.epsilon > self.epsilon_min:
-			self.epsilon = self.epsilon - self.epsilon_decay
-		else:
-			self.epsilon = self.epsilon_min
+		self.optimizer.step()
+
+		# Increment the step counter		
+		self.learn_step_counter += 1
+  
+		return loss.item()
