@@ -116,6 +116,7 @@ class Agent:
                     # Select best action
                     with torch.no_grad():
                         action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
+                        action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
                 
                 # Execute action. Truncated and info is not used
                 new_state, reward, terminated, _, info = env.step(action)
