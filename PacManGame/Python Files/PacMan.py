@@ -226,17 +226,17 @@ class PacMan(Env):
             pacman_pos = (0, 0)
         safe_distance = 260
         avoidance_reward = 0
-        num_considered_ghosts = min(len(ghost_positions), 4)
+        num_considered_ghosts = min(len(ghost_positions), 2)
         
         for ghost_pos in ghost_positions[:num_considered_ghosts]:
             distance = self.calculate_distance(pacman_pos, ghost_pos)
             #print(f"Ghost {ghost_index + 1} Position: {ghost_pos}, Distance: {distance}")
             if distance > safe_distance:
                 # avoidance_reward += (distance - safe_distance)
-                avoidance_reward += 20 / num_considered_ghosts
+                avoidance_reward += 10 / num_considered_ghosts
             else:
                 # avoidance_reward -= (safe_distance - distance) * 2
-                avoidance_reward -= 10
+                avoidance_reward -= 5
         return avoidance_reward
     
     # Method that is called to do something in the game
@@ -269,7 +269,7 @@ class PacMan(Env):
             life_penalty -= 40
             self.previous_lives = current_lives # update previous lives 
            
-        reward = avoidance_reward + life_penalty 
+        reward = avoidance_reward 
         
         done = self.get_done()
         
@@ -279,3 +279,20 @@ class PacMan(Env):
         stacked_observation = self.get_stacked_observation()
         
         return stacked_observation, reward, done, False, {}
+    
+
+def main():
+    env = PacMan()
+    obs, info = env.reset()
+    done = False
+    rewards = []
+    while not done:
+        action = env.action_space.sample()
+        obs, reward, done, _, info = env.step(action)
+        rewards.append(reward)
+        if done:
+            print(f"Total reward for episode is {sum(rewards)}")
+            rewards = []
+
+if __name__ == "__main__":
+    main()

@@ -1,18 +1,15 @@
-cartpole1:
-  env_id: CartPole-v1
+carracing0:
+  env_id: CarRacing-v0
   replay_memory_size: 100000
   discount_factor_g: 0.99
   epsilon_init: 1.0
   eps_end: 0.01
-  eps_dec: 0.9995
+  eps_dec: 0.995
   learning_rate_a: 0.0001
-  num_actions: 2
-  mini_batch_size: 32
+  mini_batch_size: 64
   input_dims: [4]
-  replace_target: 100
-  network_sync_rate: 10
-  n_games: 220
-  save_folder: saved_models
+  network_sync_step: 1000
+
 
 pacman0:
   env_id: PacMan-v0
@@ -20,12 +17,8 @@ pacman0:
   discount_factor_g: 0.99
   epsilon_init: 1.0
   eps_end: 0.01
-  eps_dec: 0.998
+  eps_decay: 0.995
   learning_rate_a: 0.0001
-  num_actions: 4
-  mini_batch_size: 32
-  input_dims: [6, 50, 80]
-  replace_target: 100
-  network_sync_rate: 10
+  mini_batch_size: 64
+  network_sync_step: 1000
   n_games: 220
-  save_folder: saved_models

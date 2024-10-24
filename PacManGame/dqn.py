@@ -1,5 +1,5 @@
 # Import Dependencies
-import torch # PyToch library for building and training neural networks
+import torch # PyTorch library for building and training neural networks
 from torch import nn
 from torch.optim import Adam
 import numpy as np # for numerical calculations

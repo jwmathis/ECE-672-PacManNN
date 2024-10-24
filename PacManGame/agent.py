@@ -35,10 +35,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # Deep Q-Learning Agent
 class Agent:
     def __init__(self, hyperparameter_set):
-        with open('hyperparameter_set.yaml', 'r') as file:
+        with open("c:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\hyperparameters.yml", 'r') as file:
             all_hyperparameters_set = yaml.safe_load(file)
             hyperparameters = all_hyperparameters_set[hyperparameter_set]
         # Hyperparameters (adjustable)    
+        self.env_id = hyperparameters['env_id']                            # Environment ID
         self.learning_rate_a = hyperparameters['learning_rate_a']          # Learning rate (alpha)
         self.discount_factor_g = hyperparameters['discount_factor_g']      # Discount factor (gamma)
         self.network_sync_step = hyperparameters['network_sync_step']      # Number of steps before updating target network
@@ -47,7 +48,6 @@ class Agent:
         self.epsilon_init = hyperparameters['epsilon_init']                # 1 = 100% random actions, 0.1 = 10% random actions
         self.epsilon_decay = hyperparameters['eps_decay']                  # Rate at which epsilon decreases
         self.epsilon_end = hyperparameters['eps_end']                      # Minimum value of epsilon
-        
         # Neural Network
         self.loss_fn = nn.MSELoss() # NN Loss function. MSE = Mean Squared Error can be swapped to something else
         self.optimizer = None       # NN optimizer. Initialize later
@@ -61,11 +61,11 @@ class Agent:
         env = PacMan()
 
         num_actions = env.action_space.n
-        input_dims = env.observation_space.shape[0]
+        input_dims = env.observation_space.shape
         
         rewards_per_episode = []
         epsilon_history = []
-        
+        last_graph_update_time = datetime.now()
         policy_dqn = DQN(input_dims, num_actions).to(device)
         
         if is_training:
@@ -91,13 +91,13 @@ class Agent:
             # Track best reward
             best_reward = -99999999
         else:
-            # Load learnd policy
+            # Load learned policy
             policy_dqn.load_state_dict(torch.load(self.MODEL_FILE))
             
             # Switch model to evaluation mode
             policy_dqn.eval()
         
-        # Train INDEFINITELY, manually stop the run when you are satisified (or unsatisfied) with the results    
+        # Train INDEFINITELY, manually stop the run when you are satisfied (or unsatisfied) with the results
         for episode in itertools.count():    
             state, _ = env.reset()
             state = torch.tensor(state, dtype=torch.float32, device=device)
@@ -119,7 +119,7 @@ class Agent:
                         action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
                 
                 # Execute action. Truncated and info is not used
-                new_state, reward, terminated, _, info = env.step(action)
+                new_state, reward, terminated, _, info = env.step(action.item())
                 
                 # Accumulate reward
                 episode_reward += reward
@@ -156,11 +156,11 @@ class Agent:
                     self.save_graph(rewards_per_episode, epsilon_history)
                     last_graph_update_time = current_time
                     
-            epsilon = max(epsilon * self.epsilon_decay, self.epsilon_min)
+            epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
             epsilon_history.append(epsilon)
             
             # If enough experience has been collected
-            if len(memory) > self.batch_size:
+            if len(memory) > self.mini_batch_size:
                 
                 # Sample from memory
                 mini_batch = memory.sample(self.mini_batch_size)
@@ -191,22 +191,20 @@ class Agent:
     #         self.optimizer.step()      # Update network parameters i.e. weights and biases
     
     def optimize(self, mini_batch, policy_dqn, target_dqn):
-       # Transpose the list of experiences and separate each element
-       states, actions, new_statesw, rewards, terminations = zip(*mini_batch)
        
        # Stack tensors to create batch tensors
-       states = torch.stack(states)
-       actions = torch.stack(actions)
-       new_states = torch.stack(new_states)
-       rewards = torch.stack(rewards)
-       terminations = torch.stack(terminations).float().to(device)
+       states = mini_batch[0].to(device)
+       actions = mini_batch[1].to(device)
+       rewards = mini_batch[2].to(device)
+       new_states = mini_batch[3].to(device)
+       terminations = mini_batch[4].float().to(device) # Convert bool to float for later calculation
        
        with torch.no_grad():
            # Calculate target Q-values (expected returns)
             target_q = rewards + (1-terminations) * self.discount_factor_g * target_dqn(new_states).max(dim=1)[0]
             
         # Calculate current Q-values from current policy
-       current_q = policy_dqn(states).gather(1, index=actions.unsqueeze(1)).squeeze(1)
+       current_q = policy_dqn(states).gather(1, index=actions.unsqueeze(1).long()).squeeze(1)
        
             
         # Compute loss for the whole minibatch
@@ -236,7 +234,7 @@ class Agent:
         plt.ylabel("Epsilon Decay")
         plt.plot(epsilon_history)
         
-        plot.subplots_adjust(wspace=1.0, hspace=1.0)
+        plt.subplots_adjust(wspace=1.0, hspace=1.0)
         
         # Save figure
         plt.savefig(self.GRAPH_FILE)
@@ -249,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument("hyperparameters", help='')
     parser.add_argument("--train", help='Training mode', action='store_true')
     args = parser.parse_args()
-    
+
     dql = Agent(hyperparameter_set=args.hyperparameters)
     
     if args.train:
