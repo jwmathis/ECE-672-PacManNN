@@ -176,7 +176,41 @@ class PacMan(Env):
         ghost_position = list(zip(*location_ghost[::-1])) + list(zip(*location_ghost2[::-1]))  + list(zip(*location_ghost3[::-1]))
 
         return ghost_position, pacman_combined_locations, screen_capture
-    
+ # Find ghosts by color
+    def find_ghosts_by_color(self, image):
+        # Convert image to HSV color space
+        hsv_image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+        
+        # Define range of colors to search
+        ghost_colors = {
+            'blinky': {'lower': np.array([0, 100, 100]), 'upper': np.array([10, 255, 255])},  # Red
+            'pinky': {'lower': np.array([160, 100, 100]), 'upper': np.array([170, 255, 255])}, # Pink
+            'inky': {'lower': np.array([85, 100, 100]), 'upper': np.array([95, 255, 255])},   # Cyan
+            'clyde': {'lower': np.array([15, 100, 100]), 'upper': np.array([25, 255, 255])}
+        }
+        
+        ghost_positions = {}
+        total_ghosts = 0
+        # Iterate over each ghost color and find position
+        for ghost, color_range in ghost_colors.items():
+            # Create mask for color
+            mask = cv.inRange(hsv_image, color_range['lower'], color_range['upper'])
+            # Find contours
+            contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+            positions = []
+            # Iterate over each contour
+            for contour in contours:
+                # Calculate bounding box
+                x, y, w, h = cv.boundingRect(contour)
+                positions.append((x+w//2, y+h//2)) # Center of the ghost
+            ghost_positions[ghost] = positions
+            #print(f"{len(positions)} {ghost}(s) found")
+            
+            total_ghosts += len(positions)
+
+        #print(f"{total_ghosts} total ghost(s) found")
+        return ghost_positions
+       
     # Method to see character detection    
     def render_positions(self):
         # Get character positions
@@ -218,8 +252,9 @@ class PacMan(Env):
             reward = 0    
         return reward
     
-    def ghost_avoidance_reward(self):
-        ghost_positions, pacman_combined_locations, _ = self.get_character_positions()
+    def ghost_avoidance_reward(self, screen_image):
+        ghost_positions = self.find_ghosts_by_color(screen_image)
+        _, pacman_combined_locations, _ = self.get_character_positions()
         if pacman_combined_locations:
             pacman_pos = pacman_combined_locations[0]
         else:
@@ -227,16 +262,36 @@ class PacMan(Env):
         safe_distance = 260
         avoidance_reward = 0
         
-        for ghost_index, ghost_pos in enumerate(ghost_positions):
-            distance = self.calculate_distance(pacman_pos, ghost_pos)
-            #print(f"Ghost {ghost_index + 1} Position: {ghost_pos}, Distance: {distance}")
-            if distance > safe_distance:
-                avoidance_reward += (distance - safe_distance)
-            else:
-                avoidance_reward -= (safe_distance - distance) * 2
+        for ghost, posiitons in ghost_positions.items():
+           for ghost_pos in posiitons:
+               distance = self.calculate_distance(pacman_pos, ghost_pos)
+               if distance > safe_distance:
+                   avoidance_reward += 20 / len(ghost_positions)
+               else:
+                   avoidance_reward -= 5
         return avoidance_reward
     
+        
+    # def ghost_avoidance_reward(self):
+    #     ghost_positions, pacman_combined_locations, _ = self.get_character_positions()
+    #     if pacman_combined_locations:
+    #         pacman_pos = pacman_combined_locations[0]
+    #     else:
+    #         pacman_pos = (0, 0)
+    #     safe_distance = 260
+    #     avoidance_reward = 0
+        
+    #     for ghost_index, ghost_pos in enumerate(ghost_positions):
+    #         distance = self.calculate_distance(pacman_pos, ghost_pos)
+    #         #print(f"Ghost {ghost_index + 1} Position: {ghost_pos}, Distance: {distance}")
+    #         if distance > safe_distance:
+    #             avoidance_reward += (distance - safe_distance)
+    #         else:
+    #             avoidance_reward -= (safe_distance - distance) * 2
+    #     return avoidance_reward
+    
     # Method that is called to do something in the game
+
     def step(self, action):
         action_map = {
             0: 'left',   # Move Left
@@ -248,25 +303,26 @@ class PacMan(Env):
         pydirectinput.press(action_map[action])
         
         # Reward for eating pellets 
-        current_pellet_count = self.read_pellet_count_from_file()
-        pellet_reward = self.get_pellet_reward(current_pellet_count)
+        # current_pellet_count = self.read_pellet_count_from_file()
+        # pellet_reward = self.get_pellet_reward(current_pellet_count)
         # Reward for avoiding ghosts
-        avoidance_reward = self.ghost_avoidance_reward()
+        raw = np.array(self.cap.grab(self.game_location))[:,:,:3]
+        avoidance_reward = self.ghost_avoidance_reward(raw)
         # Bonus reward for staying alive      
         current_lives = self.get_lives()
-        if current_lives < self.last_life:
-            self.time_alive = 0
-            self.last_life = current_lives
-        self.time_alive += 1
-        survival_reward = self.survival_reward_factor * (1.1 ** self.time_alive)
-        
+        # if current_lives < self.last_life:
+        #     self.time_alive = 0
+        #     self.last_life = current_lives
+        # self.time_alive += 1
+        # # survival_reward = self.survival_reward_factor * (1.1 ** self.time_alive)
+        # survival_reward = self.time_alive * 1.01 
         # Penalize only when a life is lost (and only once per life loss)
         life_penalty = 0
         if current_lives < self.previous_lives:
-            life_penalty -= 50
+            life_penalty -= 40
             self.previous_lives = current_lives # update previous lives 
            
-        reward = pellet_reward + avoidance_reward + survival_reward + life_penalty 
+        reward = avoidance_reward 
         
         done = self.get_done()
         
@@ -277,6 +333,21 @@ class PacMan(Env):
         
         return stacked_observation, reward, done, False, {}
     
-env = PacMan()
 
-check_env(env, warn=True)
+
+# def main():
+#     env = PacMan()
+#     obs, _ = env.reset()
+#     done = False
+#     rewards = []
+#     while not done:
+#         action = env.action_space.sample()
+#         obs, reward, done, _, _ = env.step(action)
+#         rewards.append(reward)
+#         if done:
+#             print(f"Total reward for episode is {sum(rewards)}")
+#             rewards = []
+
+# if __name__ == "__main__":
+#     while True:
+#         main()

@@ -56,7 +56,7 @@ class Agent:
         self.LOG_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.log")
         self.MODEL_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.pth")
         self.GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.png")
-        
+        self.LOSS_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_loss.png")
     def run(self, is_training=True, render=False):
         env = PacMan()
 
@@ -65,6 +65,7 @@ class Agent:
         
         rewards_per_episode = []
         epsilon_history = []
+        loss_history = []
         last_graph_update_time = datetime.now()
         policy_dqn = DQN(input_dims, num_actions).to(device)
         
@@ -165,8 +166,9 @@ class Agent:
                 # Sample from memory
                 mini_batch = memory.sample(self.mini_batch_size)
                 
-                self.optimize(mini_batch, policy_dqn, target_dqn)
-                
+                loss = self.optimize(mini_batch, policy_dqn, target_dqn)
+                loss_history.append(loss)
+                self.save_loss_graph(loss_history)
                 # Copy policy network to target network after a certain number of steps
                 if step_count > self.network_sync_step:
                     target_dqn.load_state_dict(policy_dqn.state_dict())
@@ -214,7 +216,7 @@ class Agent:
        self.optimizer.zero_grad() # Clear gradients
        loss.backward()            # Compute gradients (backpropagation)
        self.optimizer.step()      # Update network parameters i.e. weights and biases
-       
+       return loss
     def save_graph(self, rewards_per_episode, epsilon_history):
         # save plots
         fig = plt.figure(1)
@@ -223,14 +225,12 @@ class Agent:
         mean_rewards = np.zeros(len(rewards_per_episode))
         for x in range(len(rewards_per_episode)):
             mean_rewards[x] = np.mean(rewards_per_episode[max(0, x-99):(x+1)])
-        plt.subplot(121)
-        # plt.xlabel("Episodes")
+        plt.subplot(131)
         plt.ylabel("Average reward")
         plt.plot(mean_rewards)
         
         # Plot epsilon decay (Y-axis) vs episodes (X-axis)
-        plt.subplot(122)
-        # plt.xlabel("Time Steps")
+        plt.subplot(132)
         plt.ylabel("Epsilon Decay")
         plt.plot(epsilon_history)
         
@@ -239,8 +239,14 @@ class Agent:
         # Save figure
         plt.savefig(self.GRAPH_FILE)
         plt.close(fig)
-
-
+    def save_loss_graph(self, loss_history):
+        loss_history = torch.tensor(loss_history)
+        loss_history_array = loss_history.cpu().numpy()
+        fig = plt.figure(2)
+        plt.ylabel("Loss")
+        plt.plot(loss_history_array)
+        plt.savefig(self.LOSS_GRAPH_FILE)
+        plt.close(fig)
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Train or test model')

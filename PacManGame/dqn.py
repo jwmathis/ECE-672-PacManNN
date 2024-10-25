@@ -55,13 +55,13 @@ class DQN(nn.Module): # defines a new neural network model that inherits from Py
 		
 		return actions
 	
-if __name__ == '__main__':
-	lr = 0.001
-	input_dims = (6, 50, 80)
-	fc1_dims = 512
-	fc2_dims = 256
-	num_actions = 4
-	net = DQN(lr, input_dims, fc1_dims, fc2_dims, num_actions)
-	state = torch.rand(1, *input_dims)
-	action = net(state)
-	print(action)
+# if __name__ == '__main__':
+# 	lr = 0.001
+# 	input_dims = (6, 50, 80)
+# 	fc1_dims = 512
+# 	fc2_dims = 256
+# 	num_actions = 4
+# 	net = DQN(lr, input_dims, fc1_dims, fc2_dims, num_actions)
+# 	state = torch.rand(1, *input_dims)
+# 	action = net(state)
+# 	print(action)
