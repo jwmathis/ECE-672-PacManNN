@@ -246,10 +246,11 @@ class PacMan(Env):
     # Calculate reward for eating pellets
     def get_pellet_reward(self, current_pellet_count):
         if current_pellet_count < self.previous_pellet_count:
-            reward = 30 
+            reward = 10 
             self.previous_pellet_count = current_pellet_count
         else:
-            reward = 0    
+            reward = 0
+        reward = self.normalize_reward(reward)    
         return reward
     
     def ghost_avoidance_reward(self, screen_image):
@@ -259,7 +260,7 @@ class PacMan(Env):
             pacman_pos = pacman_combined_locations[0]
         else:
             pacman_pos = (0, 0)
-        safe_distance = 260
+        safe_distance = 360
         avoidance_reward = 0
         
         for ghost, posiitons in ghost_positions.items():
@@ -269,9 +270,12 @@ class PacMan(Env):
                    avoidance_reward += 20 / len(ghost_positions)
                else:
                    avoidance_reward -= 5
+        avoidance_reward = self.normalize_reward(avoidance_reward)
         return avoidance_reward
     
-        
+    def normalize_reward(self, reward, min_reward=-1.0, max_reward=1.0):
+        return np.clip(reward, min_reward, max_reward)
+      
     # def ghost_avoidance_reward(self):
     #     ghost_positions, pacman_combined_locations, _ = self.get_character_positions()
     #     if pacman_combined_locations:
@@ -303,26 +307,30 @@ class PacMan(Env):
         pydirectinput.press(action_map[action])
         
         # Reward for eating pellets 
-        # current_pellet_count = self.read_pellet_count_from_file()
-        # pellet_reward = self.get_pellet_reward(current_pellet_count)
+        current_pellet_count = self.read_pellet_count_from_file()
+        pellet_reward = self.get_pellet_reward(current_pellet_count)
+        
         # Reward for avoiding ghosts
         raw = np.array(self.cap.grab(self.game_location))[:,:,:3]
         avoidance_reward = self.ghost_avoidance_reward(raw)
+        
         # Bonus reward for staying alive      
         current_lives = self.get_lives()
-        # if current_lives < self.last_life:
-        #     self.time_alive = 0
-        #     self.last_life = current_lives
-        # self.time_alive += 1
-        # # survival_reward = self.survival_reward_factor * (1.1 ** self.time_alive)
-        # survival_reward = self.time_alive * 1.01 
+        if current_lives < self.last_life:
+            self.time_alive = 0
+            self.last_life = current_lives
+        self.time_alive += 1
+        survival_reward = self.survival_reward_factor * (1.1 ** self.time_alive)
+        survival_reward = self.normalize_reward(survival_reward)
+        #survival_reward = self.time_alive * 1.01 
+        
         # Penalize only when a life is lost (and only once per life loss)
         life_penalty = 0
         if current_lives < self.previous_lives:
-            life_penalty -= 40
+            life_penalty = self.normalize_reward(-40)
             self.previous_lives = current_lives # update previous lives 
            
-        reward = avoidance_reward 
+        reward = avoidance_reward + survival_reward + pellet_reward + life_penalty
         
         done = self.get_done()
         

@@ -203,10 +203,11 @@ class Agent:
        
        with torch.no_grad():
            # Calculate target Q-values (expected returns)
-            target_q = rewards + (1-terminations) * self.discount_factor_g * target_dqn(new_states).max(dim=1)[0]
+           next_q = target_dqn(new_states).max(dim=1)[0]
+           target_q = rewards + (self.discount_factor_g * next_q * (1 - terminations))
             
         # Calculate current Q-values from current policy
-       current_q = policy_dqn(states).gather(1, index=actions.unsqueeze(1).long()).squeeze(1)
+       current_q = policy_dqn(states).gather(1, index=actions.unsqueeze(-1).long()).squeeze(-1)
        
             
         # Compute loss for the whole minibatch
@@ -242,6 +243,7 @@ class Agent:
     def save_loss_graph(self, loss_history):
         loss_history = torch.tensor(loss_history)
         loss_history_array = loss_history.cpu().numpy()
+        print(f"Loss history: {loss_history_array}")
         fig = plt.figure(2)
         plt.ylabel("Loss")
         plt.plot(loss_history_array)
@@ -252,11 +254,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train or test model')
     parser.add_argument("hyperparameters", help='')
     parser.add_argument("--train", help='Training mode', action='store_true')
+    parser.add_argument("--test", help='Testing mode', action='store_true')
+    parser.add_argument("--load-model", help='Load pre-trained model', type=str)
     args = parser.parse_args()
 
     dql = Agent(hyperparameter_set=args.hyperparameters)
     
     if args.train:
         dql.run(is_training=True)
-    else:
+    elif args.test:
         dql.run(is_training=False)
+    elif args.load_model:
+        dql.load_model(args.load_model)
+        dql.run(is_training=False)
+    else:
+        parser.print_help()
