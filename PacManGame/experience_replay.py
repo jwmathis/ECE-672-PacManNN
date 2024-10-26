@@ -14,7 +14,7 @@ class ReplayMemory:
     def append(self, state, action, reward, state_, done):
         index = self.mem_cntr % self.mem_size
         self.state_memory[index] = state
-        self.new_state_memory[index] = state_
+        self.new_state_memory[index] = state_.unsqueeze(0)
         self.reward_memory[index] = reward
         self.action_memory[index] = action
         self.terminal_memory[index] = done

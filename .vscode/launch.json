@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\agent.py",
             "console": "integratedTerminal", 
-            "args": ["pacman0", "--train"]
+            "args": ["chromedino0", "--train"]
         }
     ]
 }

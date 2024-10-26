@@ -38,7 +38,7 @@ class DQN(nn.Module): # defines a new neural network model that inherits from Py
 		
 	def _calculate_fc_input_size(self, input_dims):
 		with torch.no_grad():
-			dummy_input = torch.zeros(1, input_dims[0], 50, 80)
+			dummy_input = torch.zeros(1, input_dims[0], input_dims[1], input_dims[2])
 			x = torch.relu(self.conv1(dummy_input))
 			x = torch.relu(self.conv2(x))
 			x = torch.relu(self.conv3(x))

@@ -12,7 +12,7 @@ import yaml
 from experience_replay import ReplayMemory
 from dqn import DQN
 from custom_environment import PacMan
-
+from ChromeDino import ChromeDino
 from datetime import datetime, timedelta
 import argparse
 import itertools
@@ -58,7 +58,7 @@ class Agent:
         self.GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.png")
         self.LOSS_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_loss.png")
     def run(self, is_training=True, render=False):
-        env = PacMan()
+        env = ChromeDino()
 
         num_actions = env.action_space.n
         input_dims = env.observation_space.shape
