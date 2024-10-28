@@ -11,8 +11,7 @@ import yaml
 
 from experience_replay import ReplayMemory
 from dqn import DQN
-from custom_environment import PacMan
-from ChromeDino import ChromeDino
+from custom_environment import PacMan, DinoGame
 from datetime import datetime, timedelta
 import argparse
 import itertools
@@ -51,14 +50,15 @@ class Agent:
         # Neural Network
         self.loss_fn = nn.MSELoss() # NN Loss function. MSE = Mean Squared Error can be swapped to something else
         self.optimizer = None       # NN optimizer. Initialize later
-        
+        self.step_count = 0
+        self.total_steps = 10000
         # Path to Run Info
         self.LOG_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.log")
         self.MODEL_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.pth")
         self.GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.png")
         self.LOSS_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_loss.png")
     def run(self, is_training=True, render=False):
-        env = ChromeDino()
+        env = DinoGame()
 
         num_actions = env.action_space.n
         input_dims = env.observation_space.shape
@@ -125,6 +125,8 @@ class Agent:
                 # Accumulate reward
                 episode_reward += reward
                 
+                # Increment step count
+                self.step_count += 1
                 # Convert new state and reward to tensors on device
                 new_state = torch.tensor(new_state, dtype=torch.float32, device=device)
                 reward = torch.tensor(reward, dtype=torch.float32, device=device)
@@ -138,8 +140,8 @@ class Agent:
                     step_count += 1
                     
                 # Move to new state
-                state = new_state
-            
+                state  = new_state
+             
             rewards_per_episode.append(episode_reward)    
             
             if is_training:
@@ -157,8 +159,11 @@ class Agent:
                     self.save_graph(rewards_per_episode, epsilon_history)
                     last_graph_update_time = current_time
                     
-            epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
+           # epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
+           # epsilon = max(self.epsilon_end + (epsilon - self.epsilon_end) * self.epsilon_decay, self.epsilon_end)
+            epsilon = max(self.epsilon_end + (self.epsilon_init - self.epsilon_end) * (1 - self.step_count / self.total_steps), self.epsilon_end)
             epsilon_history.append(epsilon)
+            print(f"Episode {episode+1}, episode reward: {episode_reward:.1f}, epsilon: {epsilon:.2f}")
             
             # If enough experience has been collected
             if len(memory) > self.mini_batch_size:
@@ -217,6 +222,7 @@ class Agent:
        self.optimizer.zero_grad() # Clear gradients
        loss.backward()            # Compute gradients (backpropagation)
        self.optimizer.step()      # Update network parameters i.e. weights and biases
+       print(f'Loss: {loss}')
        return loss
     def save_graph(self, rewards_per_episode, epsilon_history):
         # save plots
@@ -243,7 +249,6 @@ class Agent:
     def save_loss_graph(self, loss_history):
         loss_history = torch.tensor(loss_history)
         loss_history_array = loss_history.cpu().numpy()
-        print(f"Loss history: {loss_history_array}")
         fig = plt.figure(2)
         plt.ylabel("Loss")
         plt.plot(loss_history_array)

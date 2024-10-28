@@ -26,11 +26,11 @@ pacman0:
 chromedino0:
   env_id: ChromeDino-v0
   replay_memory_size: 100000
-  discount_factor_g: 0.97
+  discount_factor_g: 0.98
   epsilon_init: 1.0
   eps_end: 0.01
-  eps_decay: 0.975
+  eps_decay: 0.995
   learning_rate_a: 0.0001
-  mini_batch_size: 64
+  mini_batch_size: 32
   network_sync_step: 10000 # used 1000
   n_games: 220
