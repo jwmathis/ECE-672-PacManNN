@@ -57,7 +57,27 @@ class Agent:
         self.MODEL_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.pth")
         self.GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.png")
         self.LOSS_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_loss.png")
-    def run(self, is_training=True, render=False):
+
+    def load_model(self, model_path, policy_dqn):
+        checkpoint = torch.load(model_path, map_location=device)
+        
+        # Load the state dictionary into the policy network
+        policy_dqn.load_state_dict(checkpoint['state_dict'])
+        
+        # Print out the saved epsidoe and epsilon
+        episode = checkpoint.get('episode', 'N/A')
+        epsilon = checkpoint.get('epsilon', 'N/A')
+        print(f"Model loaded from '{model_path}'")
+        print(f"Episode at save: {episode}")
+        print(f"Epsilon at save: {epsilon}")
+        
+        # Switch model to evaluation mode
+        policy_dqn.eval()
+        
+        # Return the loaded model for use in 'run'
+        return policy_dqn      
+    
+    def run(self, is_training=True, render=False, model_path=None):
         env = DinoGame()
 
         num_actions = env.action_space.n
@@ -67,6 +87,7 @@ class Agent:
         epsilon_history = []
         loss_history = []
         last_graph_update_time = datetime.now()
+        
         policy_dqn = DQN(input_dims, num_actions).to(device)
         
         if is_training:
@@ -92,11 +113,12 @@ class Agent:
             # Track best reward
             best_reward = -99999999
         else:
-            # Load learned policy
-            policy_dqn.load_state_dict(torch.load(self.MODEL_FILE))
-            
-            # Switch model to evaluation mode
-            policy_dqn.eval()
+            if model_path:
+                # Load learned policy
+                policy_dqn = self.load_model(model_path, policy_dqn)
+            else:
+                print("No model file specified.")
+                return
         
         # Train INDEFINITELY, manually stop the run when you are satisfied (or unsatisfied) with the results
         for episode in itertools.count():    
@@ -121,7 +143,7 @@ class Agent:
                 
                 # Execute action. Truncated and info is not used
                 new_state, reward, terminated, _, info = env.step(action.item())
-                
+                # print(f"Obstacle type: {obstacle_type}")
                 # Accumulate reward
                 episode_reward += reward
                 
@@ -144,59 +166,57 @@ class Agent:
              
             rewards_per_episode.append(episode_reward)    
             
+            # if is_training:
+            #     if episode_reward > best_reward:
+            #         log_message = f"{datetime.now().strftime(DATE_FORMAT)}: New best reward {episode_reward:0.1f} ({(episode_reward-best_reward):0.1f})"
+            #         print(log_message)
+            #         with open(self.LOG_FILE, 'a') as file:
+            #             file.write(log_message + '\n')
+            #         checkpoint = {'state_dict': policy_dqn.state_dict(), 
+            #                       'optimizer': self.optimizer.state_dict(), 
+            #                       'step_count': self.step_count, 
+            #                       'epsilon': epsilon,
+            #                       'episode': episode}
+            #         torch.save(checkpoint, self.MODEL_FILE)   
+            #         # torch.save(policy_dqn.state_dict(), self.MODEL_FILE)
+            #         best_reward = episode_reward
             if is_training:
-                if episode_reward > best_reward:
-                    log_message = f"{datetime.now().strftime(DATE_FORMAT)}: New best reward {episode_reward:0.1f} ({(episode_reward-best_reward):0.1f})"
-                    print(log_message)
-                    with open(self.LOG_FILE, 'a') as file:
-                        file.write(log_message + '\n')
-                        
-                    torch.save(policy_dqn.state_dict(), self.MODEL_FILE)
-                    best_reward = episode_reward
-                    
+                if episode % 100 == 0:
+                    checkpoint = {'state_dict': policy_dqn.state_dict(), 
+                                  'optimizer': self.optimizer.state_dict(), 
+                                  'step_count': self.step_count, 
+                                  'epsilon': epsilon,
+                                  'episode': episode}
+                    model_filename = self.MODEL_FILE.replace('.pth', f'_{episode}.pth')
+                    torch.save(checkpoint, model_filename)   
+                                       
                 current_time = datetime.now()
                 if current_time - last_graph_update_time > timedelta(seconds=10):
                     self.save_graph(rewards_per_episode, epsilon_history)
                     last_graph_update_time = current_time
                     
-           # epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
-           # epsilon = max(self.epsilon_end + (epsilon - self.epsilon_end) * self.epsilon_decay, self.epsilon_end)
-            epsilon = max(self.epsilon_end + (self.epsilon_init - self.epsilon_end) * (1 - self.step_count / self.total_steps), self.epsilon_end)
-            epsilon_history.append(epsilon)
-            print(f"Episode {episode+1}, episode reward: {episode_reward:.1f}, epsilon: {epsilon:.2f}")
-            
-            # If enough experience has been collected
-            if len(memory) > self.mini_batch_size:
+                # epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
+                # epsilon = max(self.epsilon_end + (epsilon - self.epsilon_end) * self.epsilon_decay, self.epsilon_end)
+                epsilon = max(self.epsilon_end + (self.epsilon_init - self.epsilon_end) * (1 - self.step_count / self.total_steps), self.epsilon_end)
+                epsilon_history.append(epsilon)
+                print(f"Episode {episode+1}, episode reward: {episode_reward:.1f}, epsilon: {epsilon:.2f}")
                 
-                # Sample from memory
-                mini_batch = memory.sample(self.mini_batch_size)
-                
-                loss = self.optimize(mini_batch, policy_dqn, target_dqn)
-                loss_history.append(loss)
-                self.save_loss_graph(loss_history)
-                # Copy policy network to target network after a certain number of steps
-                if step_count > self.network_sync_step:
-                    target_dqn.load_state_dict(policy_dqn.state_dict())
-                    step_count = 0
+                # If enough experience has been collected
+                if len(memory) > self.mini_batch_size:
                     
-    # def optimize(self, mini_batch, policy_dqn, target_dqn):
-    #     for state, action, new_state, reward, terminated in mini_batch:
-    #         if terminated:
-    #             target = reward
-    #         else:
-    #             with torch.no_grad():
-    #                 target_q = reward + self.discount_factor_g * target_dqn(new_state).max()
+                    # Sample from memory
+                    mini_batch = memory.sample(self.mini_batch_size)
                     
-    #         current_q = policy_dqn(state)
-            
-    #         # Compute loss for the whole minibatch
-    #         loss = self.loss_fn(current_q, target_q)
-            
-    #         # Optimize the model
-    #         self.optimizer.zero_grad() # Clear gradients
-    #         loss.backward()            # Compute gradients (backpropagation)
-    #         self.optimizer.step()      # Update network parameters i.e. weights and biases
-    
+                    loss = self.optimize(mini_batch, policy_dqn, target_dqn)
+                    loss_history.append(loss)
+                    self.save_loss_graph(loss_history)
+                    # Copy policy network to target network after a certain number of steps
+                    if step_count > self.network_sync_step:
+                        target_dqn.load_state_dict(policy_dqn.state_dict())
+                        step_count = 0
+            if not is_training:
+                print(f"Test Episode {episode+1}, episode reward: {episode_reward:.1f}")
+                      
     def optimize(self, mini_batch, policy_dqn, target_dqn):
        
        # Stack tensors to create batch tensors
@@ -254,6 +274,11 @@ class Agent:
         plt.plot(loss_history_array)
         plt.savefig(self.LOSS_GRAPH_FILE)
         plt.close(fig)
+
+def load_yaml_config(yaml_file):
+    with open(yaml_file, 'r') as file:
+        return yaml.safe_load(file)
+          
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Train or test model')
@@ -261,16 +286,21 @@ if __name__ == "__main__":
     parser.add_argument("--train", help='Training mode', action='store_true')
     parser.add_argument("--test", help='Testing mode', action='store_true')
     parser.add_argument("--load-model", help='Load pre-trained model', type=str)
+    parser.add_argument("--yaml", help='Path to YAML configuration file', type=str, required=True)
     args = parser.parse_args()
 
+    config = load_yaml_config(args.yaml)
+    
     dql = Agent(hyperparameter_set=args.hyperparameters)
     
     if args.train:
         dql.run(is_training=True)
+        
     elif args.test:
-        dql.run(is_training=False)
-    elif args.load_model:
-        dql.load_model(args.load_model)
-        dql.run(is_training=False)
-    else:
-        parser.print_help()
+        model_path = args.load_model if args.load_model else config.get('model_path', None)
+        
+        if model_path:
+            dql.run(is_training=False, model_path=model_path)
+        else:
+            print("Error: --load-model must be specified when testing and is missing from the YAML config.")
+            parser.print_help()

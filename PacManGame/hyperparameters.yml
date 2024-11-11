@@ -29,8 +29,8 @@ chromedino0:
   discount_factor_g: 0.98
   epsilon_init: 1.0
   eps_end: 0.01
-  eps_decay: 0.995
+  eps_decay: 0.998
   learning_rate_a: 0.0001
   mini_batch_size: 32
   network_sync_step: 10000 # used 1000
-  n_games: 220
+  model_file: 'saved_models/chromedino0_1000.pth'

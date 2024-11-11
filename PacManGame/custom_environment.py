@@ -15,22 +15,8 @@ import time
 from gymnasium import Env
 from gymnasium.spaces import Box, Discrete
 from gymnasium.utils.env_checker import check_env  # Import the environment checker
-from collections import deque
 import math
-from mss import mss
-import pydirectinput
-import cv2
-import numpy as np
-import pytesseract
-from matplotlib import pyplot as plt
-import time
-from gym import Env
-from gym.spaces import Box, Discrete
 import os
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common import env_checker
-from stable_baselines3 import DQN
-from collections import deque
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -367,9 +353,13 @@ class DinoGame(Env):
         self.observation_space = Box(low=0, high=255, shape=(6,50,200), dtype=np.uint8)
         self.action_space = Discrete(3) # number of possible actions
         self.cap = mss()
-        self.game_location = {'top':910, 'left':-2250, 'width':1200, 'height':370} # defines viewing area
-        self.done_location = {'top':240, 'left':-2230, 'width':1800, 'height':300} # defines 'GAME OVER' location    
-        self.obstacle_location = {'top':910, 'left':-1910, 'width':1200, 'height':300} # defines obstacle viewing location
+        # self.game_location = {'top':910, 'left':-2250, 'width':1200, 'height':370} # defines viewing area
+        # self.done_location = {'top':240, 'left':-2230, 'width':1800, 'height':300} # defines 'GAME OVER' location    
+        # self.obstacle_location = {'top':910, 'left':-1910, 'width':1200, 'height':300} # defines obstacle viewing location
+        # self.obstacle_height_location = {'top':910, 'left':-1910, 'width':1200, 'height':340}
+        self.game_location = {'top':460, 'left':-2100, 'width':1000, 'height':200}
+        self.done_location = {'top':340, 'left':-1630, 'width':700, 'height':100} # defines 'GAME OVER' location    
+        self.obstacle_location = {'top':420, 'left':-1810, 'width':300, 'height':200}
         self.frame_stack = deque(maxlen=6) # stack frames to provide a sense of motion; DQN benefits from this
         
             # Initialize other variables
@@ -377,24 +367,14 @@ class DinoGame(Env):
         self.reward_sum = 0
         self.reward_count = 0
 
-    def normalize_reward(self, reward):
-        self.past_rewards.append(reward)
-        self.reward_sum += reward
-        self.reward_count += 1
-
-        mean_reward = self.reward_sum / self.reward_count
-        std_reward = (sum((r - mean_reward) ** 2 for r in self.past_rewards) / (self.reward_count + 1)) ** 0.5
-
-        normalized_reward = (reward - mean_reward) / (std_reward + 1e-8)
-        return normalized_reward
     # observation of the state of the environment
     def get_observation(self):
         # Get screen capture of game
         raw = np.array(self.cap.grab(self.game_location))[:,:,:3]
         #Grayscale
-        gray = cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY)
+        gray = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
         # Resize
-        resized = cv2.resize(gray, (200,50))
+        resized = cv.resize(gray, (200,50))
         # Add channels first
         channel = np.reshape(resized, (1,50,200))
         return channel
@@ -402,7 +382,7 @@ class DinoGame(Env):
     def get_stacked_observation(self):
         # stack the frames in the deque and convert to the required shape
         return np.concatenate(list(self.frame_stack), axis=0)
-    
+   
     # Get the done text using OCR
     def get_done(self):
         # Get done screen
@@ -436,9 +416,41 @@ class DinoGame(Env):
         current_frame = np.array(self.cap.grab(self.obstacle_location))[:,:,:3]
         
         # Define a threshold for detecting obstacles
-        obstacle_threshold = 100
-        obstacle_detected = np.sum(current_frame < obstacle_threshold) > 200
+        obstacle_threshold = 200
+        obstacle_detected = np.sum(current_frame < obstacle_threshold) > 500
         return obstacle_detected
+    # def get_obstacle_height(self):
+    #     # Capture current frame
+    #     current_frame = np.array(self.cap.grab(self.obstacle_height_location))[:,:,:3]
+    #     gray = cv.cvtColor(current_frame, cv.COLOR_BGR2GRAY)
+    #     edges = cv.Canny(gray, threshold1=100, threshold2=200)
+        
+    #     contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        
+    #     obstacle_height = 0
+    #     for contour in contours:
+    #         x, y, w, h = cv.boundingRect(contour)
+    #         if h > obstacle_height:
+    #             obstacle_height = h
+    #     return obstacle_height
+    # def classify_obstacle_by_height(self, height):
+    #     if height == 152 or height == 233:
+    #         return "pterodactyl"
+    #     elif height == 229 or height == 340:
+    #         return "cactus"
+    #     else:
+    #         return "unkown"
+        
+    def normalize_reward(self, reward):
+        self.past_rewards.append(reward)
+        self.reward_sum += reward
+        self.reward_count += 1
+
+        mean_reward = self.reward_sum / self.reward_count
+        std_reward = (sum((r - mean_reward) ** 2 for r in self.past_rewards) / (self.reward_count + 1)) ** 0.5
+
+        normalized_reward = (reward - mean_reward) / (std_reward + 1e-8)
+        return normalized_reward
     
     # method to take an action as an input and applies it to the environment
     def step(self, action):
@@ -448,6 +460,8 @@ class DinoGame(Env):
         
         # Check if obstacle is nearby before performing action
         obstacle_nearby = self.is_obstacle_nearby()
+        # height = self.get_obstacle_height()
+        # obstacle_type = self.classify_obstacle_by_height(height)
         
         # Perform the action
         if action != 2:
@@ -457,22 +471,46 @@ class DinoGame(Env):
         done = self.get_done()
 
         # Reward - we get a point for every frame we are alive
-        reward = 5
-        if done:
-            reward = -50
+        reward = 2
         total_reward += reward
-
-        if action == 0:
+        
+        # if not done:
+        #     if obstacle_nearby:
+        #         if action == 0 and obstacle_type == "cactus":
+        #             total_reward += 70 # Large reward for jumping over an obstacle that was a cactus
+        #         elif action == 1 and obstacle_type == "pterodactyl": # Reward for ducking after jumping
+        #             total_reward += 70
+        #         # reward for action and not dying even if obstacle is not identified
+        #         elif action == 0:
+        #             total_reward += 20 # small reward for jumping when an obstacle is nearby
+        #         elif action == 1:
+        #             total_reward += 20 # small reward for ducking when an obstacle is nearby
+        #         else:
+        #             total_reward -= 15 # Penalty for doing nothing when an obstacle is nearby
+        #     else:
+        #         if action == 2: # Doing nothing when its safe
+        #             total_reward += 30 # Small reward for doing nothing when safe
+        # else:
+        #     total_reward -= 60 # Penalty for dying
+        if not done:
             if obstacle_nearby:
-                total_reward += 5
-            if not done:
-                total_reward += 40
-        # elif action == 1:
-        #     if obstacle_nearby:
-        #         total_reward -= 2
-        # elif action == 2:
-        #     if obstacle_nearby:
-        #         total_reward -= 1
+                if action == 0:
+                    total_reward += 70 # Large reward for jumping over an obstacle that was a cactus
+                elif action == 1: # Reward for ducking after jumping
+                    total_reward += 70
+                # reward for action and not dying even if obstacle is not identified
+                elif action == 0:
+                    total_reward += 20 # small reward for jumping when an obstacle is nearby
+                elif action == 1:
+                    total_reward += 20 # small reward for ducking when an obstacle is nearby
+                else:
+                    total_reward -= 15 # Penalty for doing nothing when an obstacle is nearby
+            else:
+                if action == 2: # Doing nothing when its safe
+                    total_reward += 30 # Small reward for doing nothing when safe
+        else:
+            total_reward -= 60 # Penalty for dying
+            
         normalized_reward = self.normalize_reward(total_reward)       
         # Get the latest frame
         new_frame = self.get_observation()

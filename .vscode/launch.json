@@ -1,16 +1,17 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Train Neural Network",
+            "name": "ChromeDinoe Neural Network",
             "type": "debugpy",
             "request": "launch",
             "program": "C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\agent.py",
             "console": "integratedTerminal", 
-            "args": ["chromedino0", "--train"]
+            "args": ["chromedino0", 
+            "--yaml", "PacManGame\\hyperparameters.yml",
+            "--load-model", "saved_models4_web\\chromedino0_600.pth",
+            "--test"
+            ]
         }
     ]
 }

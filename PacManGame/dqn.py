@@ -1,21 +1,8 @@
 # Import Dependencies
-import torch # PyTorch library for building and training neural networks
+import torch 
 from torch import nn
 from torch.optim import Adam
-import numpy as np # for numerical calculations
-from collections import namedtuple, deque # provides useful data structures may not need
-import random # for random sampling 
-from mss import mss # for grabbing a screen shot of a monitor 
-import pydirectinput # for mouse and keyboard input on windows
-import cv2 as cv # for image and video processing
-import pytesseract # OCR tool for reading text from images
-from matplotlib import pyplot as plt
-import matplotlib.patches as patches
-import time
-from gymnasium import Env
-from gymnasium.spaces import Box, Discrete
-from gymnasium.utils import env_checker  # Import the environment checker
-from collections import deque
+
 
 
 # Designing DQN Model
