@@ -29,7 +29,6 @@ class DQN(nn.Module): # defines a new neural network model that inherits from Py
 			x = torch.relu(self.conv1(dummy_input))
 			x = torch.relu(self.conv2(x))
 			x = torch.relu(self.conv3(x))
-			
 			return x.view(1, -1).size(1)  # Flatten and get the size
 		
 	def forward(self, x):
@@ -39,7 +38,6 @@ class DQN(nn.Module): # defines a new neural network model that inherits from Py
 		x = x.view(x.size(0), -1) # Flatten the output from conv layers
 		x = torch.relu(self.fc1(x))
 		actions =  self.fc2(x)  # Output Q-Values for each action
-		
 		return actions
 	
 # if __name__ == '__main__':
