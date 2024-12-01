@@ -55,9 +55,10 @@ class Agent:
         # Path to Run Info
         self.LOG_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.log")
         self.MODEL_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.pth")
-        self.GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}.png")
+        self.REWARDS_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_rewards.png")
         self.LOSS_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_loss.png")
-
+        self.EPSILON_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_epsilon.png")
+        self.Q_VALUES_GRAPH_FILE = os.path.join(RUNS_DIR, f"{hyperparameter_set}_q_values.png") 
     def load_model(self, model_path, policy_dqn):
         checkpoint = torch.load(model_path, map_location=device)
         
@@ -87,6 +88,7 @@ class Agent:
         epsilon_history = []
         loss_history = []
         last_graph_update_time = datetime.now()
+        self.q_value_deltas = []
         
         policy_dqn = DQN(input_dims, num_actions).to(device)
         
@@ -192,9 +194,10 @@ class Agent:
                                        
                 current_time = datetime.now()
                 if current_time - last_graph_update_time > timedelta(seconds=10):
-                    self.save_graph(rewards_per_episode, epsilon_history)
+                    self.save_rewards_graph(rewards_per_episode)
+                    self.save_epsilon_graph(epsilon_history)
                     last_graph_update_time = current_time
-                    
+                    self.save_q_value_graph(self.q_value_deltas)
                 # epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
                 # epsilon = max(self.epsilon_end + (epsilon - self.epsilon_end) * self.epsilon_decay, self.epsilon_end)
                 epsilon = max(self.epsilon_end + (self.epsilon_init - self.epsilon_end) * (1 - self.step_count / self.total_steps), self.epsilon_end)
@@ -234,6 +237,9 @@ class Agent:
         # Calculate current Q-values from current policy
        current_q = policy_dqn(states).gather(1, index=actions.unsqueeze(-1).long()).squeeze(-1)
        
+       # Track Q-value deltas
+       q_value_delta = torch.abs(current_q - target_q).mean().item()
+       self.q_value_deltas.append(q_value_delta) # Store the mean delta for this batch
             
         # Compute loss for the whole minibatch
        loss = self.loss_fn(current_q, target_q)
@@ -244,7 +250,7 @@ class Agent:
        self.optimizer.step()      # Update network parameters i.e. weights and biases
        print(f'Loss: {loss}')
        return loss
-    def save_graph(self, rewards_per_episode, epsilon_history):
+    def save_rewards_graph(self, rewards_per_episode):
         # save plots
         fig = plt.figure(1)
         
@@ -252,29 +258,32 @@ class Agent:
         mean_rewards = np.zeros(len(rewards_per_episode))
         for x in range(len(rewards_per_episode)):
             mean_rewards[x] = np.mean(rewards_per_episode[max(0, x-99):(x+1)])
-        plt.subplot(131)
         plt.ylabel("Average reward")
         plt.plot(mean_rewards)
-        
-        # Plot epsilon decay (Y-axis) vs episodes (X-axis)
-        plt.subplot(132)
+        # Save figure
+        plt.savefig(self.REWARDS_GRAPH_FILE)
+        plt.close(fig)
+    def save_epsilon_graph(self, epsilon_history):
+        fig = plt.figure(2)
         plt.ylabel("Epsilon Decay")
         plt.plot(epsilon_history)
-        
-        plt.subplots_adjust(wspace=1.0, hspace=1.0)
-        
         # Save figure
-        plt.savefig(self.GRAPH_FILE)
+        plt.savefig(self.EPSILON_GRAPH_FILE)
         plt.close(fig)
     def save_loss_graph(self, loss_history):
         loss_history = torch.tensor(loss_history)
         loss_history_array = loss_history.cpu().numpy()
-        fig = plt.figure(2)
+        fig = plt.figure(3)
         plt.ylabel("Loss")
         plt.plot(loss_history_array)
         plt.savefig(self.LOSS_GRAPH_FILE)
         plt.close(fig)
-
+    def save_q_value_graph(self, q_value_deltas):
+        fig = plt.figure(4)
+        plt.ylabel("Mean Q-Value Delta")
+        plt.plot(q_value_deltas)
+        plt.savefig(self.Q_VALUES_GRAPH_FILE)
+        plt.close(fig)
 def load_yaml_config(yaml_file):
     with open(yaml_file, 'r') as file:
         return yaml.safe_load(file)

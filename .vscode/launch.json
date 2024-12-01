@@ -9,7 +9,8 @@
             "console": "integratedTerminal", 
             "args": ["chromedino0", 
             "--yaml", "PacManGame\\hyperparameters.yml",
-            "--load-model", "saved_models_web_version\\chromedino0_600.pth",
+           // "--load-model", "saved_models_web_version\\chromedino0_600.pth",
+           "--load-model", "saved_models_web_version_2\\chromedino0_600.pth",
             "--test"
             ]
         }
