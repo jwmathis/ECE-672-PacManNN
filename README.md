@@ -34,7 +34,7 @@ Note: This project was created on Windows 11.
 You can set up a virtual environment to manage these dependencies:
 ```
 # Create a new virtual environment
-python3.8 -m venv myenv
+python -m venv myenv
 # Activate the environment
 myenv\Scripts\Activate
 
