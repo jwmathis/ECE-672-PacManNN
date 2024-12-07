@@ -1,7 +1,7 @@
 import random
 import numpy as np
 import torch
-# potentially use deque for quicker access if notice speed issues during training
+
 class ReplayMemory:
     def __init__(self, max_mem_size, input_dims):
         self.mem_size = max_mem_size 

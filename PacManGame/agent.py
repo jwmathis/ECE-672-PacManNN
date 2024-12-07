@@ -168,20 +168,6 @@ class Agent:
              
             rewards_per_episode.append(episode_reward)    
             
-            # if is_training:
-            #     if episode_reward > best_reward:
-            #         log_message = f"{datetime.now().strftime(DATE_FORMAT)}: New best reward {episode_reward:0.1f} ({(episode_reward-best_reward):0.1f})"
-            #         print(log_message)
-            #         with open(self.LOG_FILE, 'a') as file:
-            #             file.write(log_message + '\n')
-            #         checkpoint = {'state_dict': policy_dqn.state_dict(), 
-            #                       'optimizer': self.optimizer.state_dict(), 
-            #                       'step_count': self.step_count, 
-            #                       'epsilon': epsilon,
-            #                       'episode': episode}
-            #         torch.save(checkpoint, self.MODEL_FILE)   
-            #         # torch.save(policy_dqn.state_dict(), self.MODEL_FILE)
-            #         best_reward = episode_reward
             if is_training:
                 if episode % 100 == 0:
                     checkpoint = {'state_dict': policy_dqn.state_dict(), 
@@ -198,8 +184,6 @@ class Agent:
                     self.save_epsilon_graph(epsilon_history)
                     last_graph_update_time = current_time
                     self.save_q_value_graph(self.q_value_deltas)
-                # epsilon = max(epsilon * self.epsilon_decay, self.epsilon_end)
-                # epsilon = max(self.epsilon_end + (epsilon - self.epsilon_end) * self.epsilon_decay, self.epsilon_end)
                 epsilon = max(self.epsilon_end + (self.epsilon_init - self.epsilon_end) * (1 - self.step_count / self.total_steps), self.epsilon_end)
                 epsilon_history.append(epsilon)
                 print(f"Episode {episode+1}, episode reward: {episode_reward:.1f}, epsilon: {epsilon:.2f}")
@@ -250,10 +234,10 @@ class Agent:
        self.optimizer.step()      # Update network parameters i.e. weights and biases
        print(f'Loss: {loss}')
        return loss
+   
     def save_rewards_graph(self, rewards_per_episode):
         # save plots
         fig = plt.figure(1)
-        
         # Plot average rewards (Y-axis) vs episodes (X-axis)
         mean_rewards = np.zeros(len(rewards_per_episode))
         for x in range(len(rewards_per_episode)):
@@ -263,6 +247,7 @@ class Agent:
         # Save figure
         plt.savefig(self.REWARDS_GRAPH_FILE)
         plt.close(fig)
+        
     def save_epsilon_graph(self, epsilon_history):
         fig = plt.figure(2)
         plt.ylabel("Epsilon Decay")
@@ -270,6 +255,7 @@ class Agent:
         # Save figure
         plt.savefig(self.EPSILON_GRAPH_FILE)
         plt.close(fig)
+        
     def save_loss_graph(self, loss_history):
         loss_history = torch.tensor(loss_history)
         loss_history_array = loss_history.cpu().numpy()
@@ -278,12 +264,14 @@ class Agent:
         plt.plot(loss_history_array)
         plt.savefig(self.LOSS_GRAPH_FILE)
         plt.close(fig)
+        
     def save_q_value_graph(self, q_value_deltas):
         fig = plt.figure(4)
         plt.ylabel("Mean Q-Value Delta")
         plt.plot(q_value_deltas)
         plt.savefig(self.Q_VALUES_GRAPH_FILE)
         plt.close(fig)
+        
 def load_yaml_config(yaml_file):
     with open(yaml_file, 'r') as file:
         return yaml.safe_load(file)

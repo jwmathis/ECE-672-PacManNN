@@ -520,19 +520,3 @@ class DinoGame(Env):
         stacked_observation = self.get_stacked_observation()
         
         return stacked_observation, normalized_reward, done, False, {}
-# def main():
-#     env = PacMan()
-#     obs, _ = env.reset()
-#     done = False
-#     rewards = []
-#     while not done:
-#         action = env.action_space.sample()
-#         obs, reward, done, _, _ = env.step(action)
-#         rewards.append(reward)
-#         if done:
-#             print(f"Total reward for episode is {sum(rewards)}")
-#             rewards = []
-
-# if __name__ == "__main__":
-#     while True:
-#         main()
