@@ -34,9 +34,9 @@ Note: This project was created on Windows 11.
 You can set up a virtual environment to manage these dependencies:
 ```
 # Create a new virtual environment
-python -m venv venv
+python3.8 -m venv myenv
 # Activate the environment
-venv\Scripts\Activate
+myenv\Scripts\Activate
 
 # Install dependencies
 pip install -r requirements.txt
