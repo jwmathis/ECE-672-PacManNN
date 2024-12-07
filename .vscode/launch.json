@@ -5,12 +5,12 @@
             "name": "ChromeDinoe Neural Network",
             "type": "debugpy",
             "request": "launch",
-            "program": "C:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\agent.py",
+            "program": "C:\\Users\\John Wesley\\Docs\\PacMan\\DeepQNetworkScripts\\agent.py",
             "console": "integratedTerminal", 
             "args": ["chromedino0", 
-            "--yaml", "PacManGame\\hyperparameters.yml",
-           "--load-model", "saved_models_web_version\\chromedino0_600.pth",
-            "--test"
+            "--yaml", "DeepQNetworkScripts\\hyperparameters.yml",
+           //"--load-model", "saved_models_web_version\\chromedino0_600.pth",
+            "--train"
             ]
         }
     ]

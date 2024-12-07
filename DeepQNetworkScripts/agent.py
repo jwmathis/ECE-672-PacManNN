@@ -23,7 +23,7 @@ import os
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Directory for saving run info
-RUNS_DIR = "runs"
+RUNS_DIR = "Runs//runs"
 os.makedirs(RUNS_DIR, exist_ok=True)
 
 # 'Agg': used to generate plots as images and save them to a file instead of rendering to screen
@@ -34,7 +34,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # Deep Q-Learning Agent
 class Agent:
     def __init__(self, hyperparameter_set):
-        with open("c:\\Users\\John Wesley\\Docs\\PacMan\\PacManGame\\hyperparameters.yml", 'r') as file:
+        with open("c:\\Users\\John Wesley\\Docs\\PacMan\\DeepQNetworkScripts\\hyperparameters.yml", 'r') as file:
             all_hyperparameters_set = yaml.safe_load(file)
             hyperparameters = all_hyperparameters_set[hyperparameter_set]
         # Hyperparameters (adjustable)    
