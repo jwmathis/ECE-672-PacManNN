@@ -48,8 +48,8 @@ Follow these steps to download, set up, and configure the project:
 
 Download the project files from GitHub:
 ```
-git clone https://github.com/your-username/your-repo-name.
-cd your-repo-name
+git clone https://github.com/jwmathis/ECE672_ROM_NeuralNetwork.git
+cd ECE672_ROM_NeuralNetwork
 ```
 
 2. Install Dependencies
