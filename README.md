@@ -17,23 +17,25 @@ with a framework for methods across different gaming environments.
 ## Getting Started
 
 ### Dependencies
-
 To run this project, ensure you have the following dependencies installed:
-
-* Python: Version 3.8 or higher
-* Gymnasium: `pip install Gymnasium`
-* Gymnasium-Retro: `pip install gymnasium[retro]`
-* PyTorch
-* NumPy
-* OpenCV
-* Matplotlib
-
+Note: This project was created on Windows 11.
+* Python: Version 3.8
+* Gymnasium: Version 0.29.1
+* PyTorch: Version 2.4.1+cu124
+* TorchAudio: Version 0.19.1+cu124
+* NumPy: Version 1.24.1
+* OpenCV: Version 4.10
+* Matplotlib: Version 3.7
+* MSS: Version 9.0.2
+* PyTesseract: Version 0.3.13
+* PyDirectInput: Version 1.0.4
+* Selenium: Version 4.25.0
+* yaml: version 0.2.5
 You can set up a virtual environment to manage these dependencies:
 ```
 # Create a new virtual environment
 python -m venv venv
 # Activate the environment
-# On Windows:
 venv\Scripts\Activate
 
 # Install dependencies
