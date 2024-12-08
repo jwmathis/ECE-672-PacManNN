@@ -31,6 +31,7 @@ Note: This project was created on Windows 11.
 * PyDirectInput: Version 1.0.4
 * Selenium: Version 4.25.0
 * yaml: version 0.2.5
+
 You can set up a virtual environment to manage these dependencies:
 ```
 # Create a new virtual environment
@@ -64,9 +65,13 @@ pip install -r requirements.txt
 ```
 
 3. Obtain Game ROMs
-This project requires the Pac-Man ROM. Note that ROMs are copyrighted, so you must legally own the game to use 
+
+* This project requires the Pac-Man ROM. Note that ROMs are copyrighted, so you must legally own the game to use 
 its ROM. 
 
-This project requires Chrome Dino. Chrome Dino can be accessed by navigating to Chrome://Dino in the Google Chrome Browser.
+* This project requires Chrome Dino. Chrome Dino can be accessed by navigating to Chrome://Dino in the Google Chrome Browser.
 
-4. Configure Environment files
+4. Configure Custom Environment file
+
+* This project was made using two monitors where the game is on one screen and the code is on the other. As a result, the dimensions of the
+  observation space, screen capturing, etc. may need to be modified before running.
