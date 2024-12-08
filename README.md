@@ -11,7 +11,7 @@ includes:
 * Custom reward systems tailored for each game.
 * Preprocessing techniques, including frame stacking, grayscale conversion, and frame resizing.
 
-The primary goal of this project is to develop an understanding and knowledge of DQNs, reinforcement learning, and to familiarization
+The primary goal of this project is to develop an understanding and knowledge of DQNs, reinforcement learning, and familiarization
 with a framework for methods across different gaming environments.
 
 ## Getting Started
